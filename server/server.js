@@ -30,6 +30,7 @@ const parserFunction = async () => {
     }); 
   }))*/
   let partNumber = -99;
+  let yAxis = -999;
   let description = -111;
   let shade = -112;
   let hsCode = -115;
@@ -91,44 +92,78 @@ const parserFunction = async () => {
           let strArr = [];
           let index = -1;
           
-          if (!eachLine["PartNumber"]) {
+          if (text.x >= partNumber-0.3 && text.x < description) {
             //--PART NUMBER COLUMN SECTION--//
-            if (text.x >= partNumber && text.x < description) {                        
-              if (text.R[0].T.trim().match(/^\d+.+/)) {
+            //!eachLine["PartNumber"]
+            if (text.R[0].T.trim().match(/^\d+.+/)) {
+              //If no Part number
+              if (!eachLine["PartNumber"]) {
                 eachLine["PartNumber"] = text.R[0].T.trim();
               }
-            }  
+              else {
+                eachLine["COO"] = "USA";
+                if (eachLine["Description"]) {
+                  eachLine["Description"] = eachLine["Description"].replace(/\s\s+/g, ' ').trim();
+                }
+                console.log(eachLine);
+                eachLine = {};
+                eachLine["PartNumber"] = text.R[0].T.trim();
+              }
+            }
+            else if (eachLine["PartNumber"] && !eachLine["COO"]) {
+              //COUNTRY OF ORIGIN
+              str = text.R[0].T.trim().replace(/%20/g, " ");
+              strArr = str.split(" ");
+              //CHECK IF COO AVAILABLE
+              if (strArr[0] === "Item" && strArr[1] === "Number") {
+                index = strArr.findIndex(ele => ele === "manufactured");
+                str = "";
+                for (let i = index+2; i <strArr.length; i++) {
+                  str = str + strArr[i] + " ";
+                }
+                eachLine["COO"] = str.trim();
+                if (eachLine["Description"]) {
+                  eachLine["Description"] = eachLine["Description"].replace(/\s\s+/g, ' ').trim();
+                }
+                console.log(eachLine);
+                eachLine = {};
+              }  
+            }
           } 
           else {
-            if (!eachLine["COO"]) {
+            if (eachLine["PartNumber"] && !eachLine["COO"]) {
+              str = decodeURI(text.R[0].T).replace(/%2C/g, "").replace(/%20/g, " ").replace(/%2F/g, "/").trim();
+              //str = text.R[0].T.trim().replace(/%2C/g, "").replace(/%20/g, " ");
+              
               //--PART NUMBER COLUMN SECTION--//
-              if (text.x >= partNumber && text.x < description) {
-                str = text.R[0].T.trim().replace(/%20/g, " ");
-                strArr = str.split(" ");
-                //CHECK IF COO AVAILABLE
-                if (strArr[0] === "Item" && strArr[1] === "Number") {
-                  index = strArr.findIndex(ele => ele === "manufactured");
-                  str = "";
-                  for (let i = index+2; i <strArr.length; i++) {
-                    str = str + strArr[i] + " ";
-                  }
-                  eachLine["COO"] = str.trim();
-                  console.log(eachLine);
-                } else {
-                eachLine["COO"] = "USA";
-                }  
-              } 
-              else if (text.x >= vcc - 0.4) {
-                eachLine["Amount"] = text.R[0].T.trim();
+              if (text.x >= description - 0.1 && text.x < shade) {
+                if (!eachLine["Description"]) {
+                  eachLine["Description"] = str;
+                }
+                else {
+                  eachLine["Description"] += str;
+                }
               }
-
-
+              //--HS CODE COLUMN SECTION--//
+              if (text.x >= hsCode - 0.1 && text.x < batch) {
+                eachLine["HSCode"] = str;
+              }
+              //--SHIPPED COLUMN SECTION--//
+              if (text.x >= quantity - 0.1 && text.x < unitPrice) {
+                eachLine["shipped"] = str;
+              }
+              //--TOTAL WEIGHT COLUMN SECTION--//
+              if (text.x >= totWeight - 0.1 && text.x < vcc) {
+                eachLine["totWeight"] = str;
+              }
+              //--AMOUNT COLUMN SECTION--//
+              else if (text.x >= vcc - 0.4) {
+                eachLine["Amount"] = str;
+              }
             }
-            else {
-              //fs.appendFileSync("./testPdf/test.json", eachLine + ", ");
-              console.log(eachLine)
-              eachLine = {};
-            }
+
+            //fs.appendFileSync("./testPdf/test.json", eachLine + ", ");
+
           }
         })
         
